@@ -222,7 +222,7 @@ if __name__ == '__main__':
     dataframe = pd.DataFrame(results_list)
 
     # Define a file path where to save the results
-    hdf_file_path = './results.hdf'
+    hdf_file_path = '../data/results.hdf'
 
     # If requested, save the data frame directly using pandas
     if args.use_pandas:
