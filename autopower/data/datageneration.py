@@ -60,7 +60,7 @@ def get_power_spectrum(h,
 	results = camb.get_results(pars)
 	results.calc_power_spectra(pars)
 	kh, z, pk= \
-		results.get_matter_power_spectrum(minkh=1e-4,
+		results.get_matter_power_spectrum(minkh=1e-2,
 										  maxkh=1,
 										  npoints=nkpoints)
 
