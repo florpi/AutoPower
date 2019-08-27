@@ -21,7 +21,7 @@ import warnings
 from multiprocessing import Process
 from tqdm import tqdm
 
-from autopower.datageneration import get_power_spectrum
+from autopower.data.datageneration import get_power_spectrum
 from autopower.utils.multiprocessing import Queue
 
 
