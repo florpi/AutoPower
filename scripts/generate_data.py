@@ -10,7 +10,6 @@ store the result in an HDF file.
 import argparse
 import copy
 import h5py
-import itertools
 import numpy as np
 import os
 import pandas as pd
@@ -47,8 +46,8 @@ def queue_worker(parameters, results_queue):
     try:
 
         # Run the simulation and collect the results
-        kh, pk_lin = get_power_spectrum(**parameters, mode = 'linear')
-        kh, pk_nonlin = get_power_spectrum(**parameters, mode = 'non-linear')
+        kh, pk_lin = get_power_spectrum(**parameters, mode='linear')
+        kh, pk_nonlin = get_power_spectrum(**parameters, mode='non-linear')
 
         # Combine the results with their parameters into a single result dict
         result = copy.deepcopy(parameters)
@@ -97,20 +96,22 @@ if __name__ == '__main__':
                         help='Number of parallel processes (default: 1).',
                         type=int,
                         default=1)
+    parser.add_argument('--no-progressbar',
+                        help='Do not show a progressbar while generating '
+                             'samples.',
+                        action='store_true')
     parser.add_argument('--random-seed',
                         help='Random seed for numpy (default: 42).',
                         type=int,
                         default=42)
     parser.add_argument('--use-pandas',
-                        help='Use pandas to save the results to an HDF file?',
-                        action='store_true',
-                        default=False)
-
+                        help='Use pandas to save the results to an HDF file.',
+                        action='store_true')
     parser.add_argument('--n-samples',
-                        help='Number of parameter combinations to compute the ps for',
+                        help='Number of parameter combinations for which to '
+                             'compute the power spectrum (default: 100).',
                         type=int,
                         default=100)
-
 
     # Parse the arguments that were passed when calling this script
     print('Parsing command line arguments...', end=' ')
@@ -124,7 +125,6 @@ if __name__ == '__main__':
     # Define the parameter space for which to generate power spectra
     # -------------------------------------------------------------------------
 
-
     '''
     h_values = np.linspace(0.5, 0.7, 4)
     omc_values = np.linspace(0.24, 0.26, 4)
@@ -134,13 +134,18 @@ if __name__ == '__main__':
         parameter_combinations.append(dict(h=h, omc=omc))
     '''
 
+    # TODO: This should be made more descriptive (i.e., what parameter does
+    #       the minimum / maximum belong to?
     minimum_values = [0.65, 0.10]
     maximum_values = [0.69,  0.13]
 
-    parameter_combinations = lh.latin_hypercube(args.n_samples, minimum_values, maximum_values)
-
-    parameter_combinations = [{'h': h, 'omc':om } for h, om in list(zip(parameter_combinations[:,0],
-                                            parameter_combinations[:,1]))]
+    # Use a latin hypercube to generate the parameter combinations for which
+    # we will generate a sample
+    parameter_combinations = \
+        lh.latin_hypercube(args.n_samples, minimum_values, maximum_values)
+    parameter_combinations = \
+        [{'h': h, 'omc': omc} for h, omc in zip(parameter_combinations[:, 0],
+                                                parameter_combinations[:, 1])]
 
     # -------------------------------------------------------------------------
     # Create samples (i.e., simulate power spectra for these combinations)
@@ -158,10 +163,17 @@ if __name__ == '__main__':
     results_queue = Queue()
     results_list = []
 
+    # Set up the context manager based on whether or not we show a progressbar
+    if args.no_progressbar:
+        # This is a simple workaround for a no-op context manager, since
+        # contextlib.nullcontext() is only available for Python 3.7+.
+        context = memoryview(b'')
+    else:
+        tqdm_args = dict(total=args.n_samples, ncols=80, unit='sample')
+        context = tqdm(**tqdm_args)
+
     # Use process-based multiprocessing to generate samples in parallel
-    tqdm_args = dict(total=args.n_samples, ncols=80, unit='sample')
-    #with tqdm(**tqdm_args) as progressbar:
-    for i in range(args.n_samples):
+    with context as progressbar:
 
         # Keep track of all running processes
         list_of_processes = []
@@ -210,7 +222,7 @@ if __name__ == '__main__':
                 # Remember this process and its starting time
                 process_dict = dict(process=p, start_time=time.time())
                 list_of_processes.append(process_dict)
-                
+
                 # Finally, start the process
                 p.start()
 
@@ -221,10 +233,11 @@ if __name__ == '__main__':
                 results_list.append(results_queue.get())
 
             # Update the progress bar based on the number of results
-            #progressbar.update(len(results_list) - progressbar.n)
-            
+            if not args.no_progressbar:
+                progressbar.update(len(results_list) - progressbar.n)
+
             # Sleep for some time before we check the processes again
-            #time.sleep(0.1)
+            time.sleep(0.1)
 
     print('Sample generation completed!\n', flush=True)
 
@@ -243,7 +256,6 @@ if __name__ == '__main__':
     # If requested, save the data frame directly using pandas
     if args.use_pandas:
         dataframe.to_hdf(hdf_file_path, key='data_as_pandas_dataframe')
-
 
     # Otherwise, simply use a vanilla HDF file
     else:
