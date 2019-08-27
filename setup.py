@@ -14,6 +14,7 @@ setup(name='AutoPower',
                         'scipy',
                         'seaborn',
                         'torch',
-                        'tqdm'],
+                        'tqdm',
+						'pyDOE'],
       packages=['autopower'],
       zip_safe=False)
