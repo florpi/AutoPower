@@ -3,7 +3,7 @@ from camb import model, initialpower
 
 
 def get_power_spectrum(h, omc, omb = 0.0486,
-     redshift = 0., nkpoints = 200, mode = 'non-linear'):
+     redshift = 0., nkpoints = 200, mode = 'linear'):
     
     H0 = 100. * h
     ombh2 = omb * h **2

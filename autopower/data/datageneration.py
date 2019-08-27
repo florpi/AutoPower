@@ -7,6 +7,7 @@ Methods for generating power spectrum data.
 # -----------------------------------------------------------------------------
 
 import camb
+from camb import model, initialpower
 import numpy as np
 
 from typing import Tuple
@@ -20,6 +21,7 @@ def get_power_spectrum(h,
                        omc,
                        omb: float = 0.0486,
                        redshift: float = 0,
+                       mode: str = 'linear',
                        nkpoints: int = 200) -> Tuple[np.ndarray, np.ndarray]:
     """
     Use CAMB to compute the power spectrum for the given parameters.
@@ -29,6 +31,7 @@ def get_power_spectrum(h,
         omc: Dark matter density parameter.
         omb: Baryon density parameter.
         redshift: Redshift at which to compute the power spectrum.
+        mode: Use linear Perturbation Theory or non-linear one.
         nkpoints: Number of points (in k-space) of the spectrum.
 
     Returns:
@@ -47,13 +50,20 @@ def get_power_spectrum(h,
     pars.InitPower.set_params()
     pars.set_matter_power(redshifts=[redshift], kmax=2.0)
 
+    if mode == 'linear':
+
+        pars.NonLinear = model.NonLinear_none
+    
+    elif mode == 'non-linear':
+        pars.NonLinear = model.NonLinear_both
+
     # Compute the power spectrum (Halofit)
     pars.NonLinear = camb.model.NonLinear_both
     results = camb.get_results(pars)
     results.calc_power_spectra(pars)
-    kh_nonlin, z_nonlin, pk_nonlin = \
+    kh, z, pk= \
         results.get_matter_power_spectrum(minkh=1e-4,
                                           maxkh=1,
                                           npoints=nkpoints)
 
-    return kh_nonlin, pk_nonlin[0].ravel()
+    return kh, pk[0].ravel() # 0 for only one redshift

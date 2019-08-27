@@ -24,6 +24,8 @@ from tqdm import tqdm
 from autopower.data.datageneration import get_power_spectrum
 from autopower.utils.multiprocessing import Queue
 
+from autopower.utils import latinhypercube as lh
+
 
 # -----------------------------------------------------------------------------
 # FUNCTION DEFINITIONS
@@ -45,12 +47,13 @@ def queue_worker(parameters, results_queue):
     try:
 
         # Run the simulation and collect the results
-        kh, pk = get_power_spectrum(**parameters)
+        kh, pk_lin = get_power_spectrum(**parameters, mode = 'linear')
+        kh, pk_nonlin = get_power_spectrum(**parameters, mode = 'non-linear')
 
         # Combine the results with their parameters into a single result dict
         result = copy.deepcopy(parameters)
         result['kh'] = kh
-        result['pk'] = pk
+        result['pk_ratio'] = pk_nonlin/pk_lin
 
         # Add results to the result queue and exit with exit code zero
         results_queue.put(result)
@@ -103,6 +106,12 @@ if __name__ == '__main__':
                         action='store_true',
                         default=False)
 
+    parser.add_argument('--n-samples',
+                        help='Number of parameter combinations to compute the ps for',
+                        type=int,
+                        default=100)
+
+
     # Parse the arguments that were passed when calling this script
     print('Parsing command line arguments...', end=' ')
     args = parser.parse_args()
@@ -115,17 +124,23 @@ if __name__ == '__main__':
     # Define the parameter space for which to generate power spectra
     # -------------------------------------------------------------------------
 
-    # TODO: This needs to be adjusted to sample the correct space; either
-    #       using a grid or randomly sampling from some assumed distribution
-    #       over the parameters (or whatever else we think is appropriate).
+
+    '''
     h_values = np.linspace(0.5, 0.7, 4)
     omc_values = np.linspace(0.24, 0.26, 4)
 
     parameter_combinations = list()
     for h, omc in itertools.product(h_values, omc_values):
         parameter_combinations.append(dict(h=h, omc=omc))
+    '''
 
-    n_samples = len(parameter_combinations)
+    minimum_values = [0.65, 0.10] 
+    maximum_values = [0.69,  0.13] 
+
+    parameter_combinations = lh.latin_hypercube(args.n_samples, minimum_values, maximum_values)
+
+    parameter_combinations = [{'h': h, 'omc':om } for h, om in list(zip(parameter_combinations[:,0], 
+                                            parameter_combinations[:,1]))]
 
     # -------------------------------------------------------------------------
     # Create samples (i.e., simulate power spectra for these combinations)
@@ -144,7 +159,7 @@ if __name__ == '__main__':
     results_list = []
 
     # Use process-based multiprocessing to generate samples in parallel
-    tqdm_args = dict(total=n_samples, ncols=80, unit='sample')
+    tqdm_args = dict(total=args.n_samples, ncols=80, unit='sample')
     with tqdm(**tqdm_args) as progressbar:
 
         # Keep track of all running processes
@@ -232,9 +247,9 @@ if __name__ == '__main__':
     else:
         # TODO: This needs to be adjusted to the parameters we are using!
         with h5py.File(hdf_file_path, 'w') as hdf_file:
-            for key in ('kh', 'pk', 'h', 'omc'):
+            for key in ('kh', 'pk_ratio', 'h', 'omc'):
                 data = dataframe[key].to_numpy()
-                if key in ('kh', 'pk'):
+                if key in ('kh', 'pk_ratio'):
                     data = np.row_stack(data)
                 hdf_file.create_dataset(name=key, data=data, shape=data.shape)
 
