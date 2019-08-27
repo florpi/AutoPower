@@ -1,3 +1,11 @@
 {
-    "experiment_dir": null
+    "experiment_dir": null,
+    "model": {
+        "module": "autopower.models.autoencoders",
+        "class": "DefaultAutoencoder",
+        "parameters": {
+            "n_input_dim": 200,
+            "n_latent_dim": 6
+        }
+    }
 }
