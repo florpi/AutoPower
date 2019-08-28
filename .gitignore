@@ -1,3 +1,7 @@
+# Contents of experiment folders (except config files)
+experiments/*/*
+!experiments/*/config.json
+
 # HDF data files
 *.hdf
 
