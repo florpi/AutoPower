@@ -261,6 +261,7 @@ def validate(dataloader: torch.utils.data.DataLoader,
     # -------------------------------------------------------------------------
     
     if args.tensorboard:
+
         # Compute the current global_step (i.e., the total number examples
         # that we've seen during training so far)
         global_step = epoch * args.n_train_batches * args.batch_size
@@ -441,7 +442,7 @@ if __name__ == '__main__':
     # -------------------------------------------------------------------------
     # Create a TensorBoard logger and log some basics
     # -------------------------------------------------------------------------
-    
+
     if args.tensorboard:
 
         # Create a dir where all the TensorBoard logs will be stored
@@ -451,7 +452,7 @@ if __name__ == '__main__':
         # Create TensorBoard logger
         args.logger = \
             SummaryWriter(log_dir=get_log_dir(log_base_dir=tensorboard_dir))
-        
+
         # Add all args to as text objects (to epoch 0)
         for key, value in dict(vars(args)).items():
             args.logger.add_text(tag=key,
