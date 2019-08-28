@@ -28,8 +28,10 @@ class DefaultDataset(torch.utils.data.Dataset):
 
         self.as_tensor = as_tensor
 
+        self.mode = mode
+
         # Basic sanity check: Must select valid mode
-        if mode not in ("training", "validation"):
+        if self.mode not in ("training", "validation"):
             raise ValueError('mode must be either "training" or "validation"!')
 
         # Load data from HDF sample file
@@ -50,7 +52,7 @@ class DefaultDataset(torch.utils.data.Dataset):
         self.labels = self.labels[idx]
 
         # Select the right subset based on the mode
-        if mode == 'training':
+        if self.mode == 'training':
             self.data = self.data[:train_size]
             self.labels = self.labels[:train_size]
         else:
