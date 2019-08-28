@@ -50,7 +50,7 @@ class DefaultDataset(torch.utils.data.Dataset):
         self.labels = self.labels[idx]
 
         # Select the right subset based on the mode
-        if mode == 'train':
+        if mode == 'training':
             self.data = self.data[:train_size]
             self.labels = self.labels[:train_size]
         else:
