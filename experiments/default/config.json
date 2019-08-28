@@ -1,11 +1,13 @@
 {
     "experiment_dir": null,
     "model": {
-        "module": "autopower.models.autoencoders",
-        "class": "DefaultAutoencoder",
+        "module": "autopower.models.fully_connected",
+        "class": "DefaultFullyConnectedModel",
         "parameters": {
-            "n_input_dim": 200,
-            "n_latent_dim": 6
+            "n_input_dim": 2,
+            "n_output_dim": 200,
+            "n_hidden_layers": 3,
+            "n_latent_dim": 512
         }
     }
 }
