@@ -23,7 +23,10 @@ class DefaultDataset(torch.utils.data.Dataset):
                  hdf_file_path: str,
                  train_size: int = 1000,
                  validation_size: int = 1000,
-                 random_seed: int = 42):
+                 random_seed: int = 42,
+                 as_tensor: bool = True):
+
+        self.as_tensor = as_tensor
 
         # Basic sanity check: Must select valid mode
         if mode not in ("training", "validation"):
@@ -63,9 +66,13 @@ class DefaultDataset(torch.utils.data.Dataset):
     # -------------------------------------------------------------------------
 
     def __getitem__(self, index):
-
-        # Convert data to torch tensor and return
-        data = torch.tensor(self.data[index]).float()
-        label = torch.tensor(self.labels[index]).float()
+    
+        # If desired, convert data to torch tensor first
+        if self.as_tensor:
+            data = torch.tensor(self.data[index]).float()
+            label = torch.tensor(self.labels[index]).float()
+        else:
+            data = self.data[index]
+            label = self.labels[index]
 
         return data, label
