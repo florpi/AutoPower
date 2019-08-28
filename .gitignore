@@ -1,3 +1,6 @@
+# HDF data files
+*.hdf
+
 # PyCharm project folder
 .idea
 
