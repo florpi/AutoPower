@@ -168,6 +168,8 @@ def train(dataloader: torch.utils.data.DataLoader,
         #       of the latent dimensions)
         loss = loss_func(output, target)
 
+
+
         # Back-propagate the loss and update the weights
         loss.backward()
         optimizer.step(closure=None)
@@ -635,17 +637,4 @@ if __name__ == '__main__':
     print('')
     print(f'This took {time.time() - script_start:.1f} seconds!')
     print('')
-
-    ratio = val_prediction.numpy()/val_label.numpy()
-    plt.errorbar(k, np.mean(ratio, axis = 0), yerr = np.std(ratio, axis = 0))
-
-    plt.ylim(0.9, 1.1)
-
-    plt.axhline(y = 1.01, linestyle = 'dashed', color = 'gray')
-    plt.axhline(y = 1., color = 'gray')
-    plt.axhline(y = 0.99, linestyle = 'dashed', color = 'gray')
-    plt.ylabel('emulator/simulation')
-    plt.xlabel('k')
-    plt.show()
-
 
