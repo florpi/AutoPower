@@ -22,6 +22,8 @@ from autopower.utils.config import load_config
 from autopower.utils.importing import get_class_by_name
 from autopower.utils.training import AverageMeter, get_log_dir, update_lr
 
+import autopower.utils.post_training_plots as plot
+
 from sklearn.metrics import mean_squared_error as mse
 
 import matplotlib.pyplot as plt
@@ -53,7 +55,7 @@ def get_arguments() -> argparse.Namespace:
                         default=100,
                         type=int,
                         metavar='N',
-                        help='Total number of training epochs. Default: 64.')
+                        help='Total number of training epochs. Default: 100.')
     parser.add_argument('--experiment',
                         default='default',
                         type=str,
@@ -146,7 +148,11 @@ def train(dataloader: torch.utils.data.DataLoader,
         optimizer.zero_grad()
 
         # Compute forward pass through model
-        output = model.forward(data).squeeze()
+        if config['model']['class'] == 'DefaultAutoencoder':
+            output = model.forward(target).squeeze()
+
+        else:
+            output = model.forward(data).squeeze()
 
         # Calculate the loss for the batch
         # TODO: This needs to be adjusted if we also want to compute a loss
@@ -247,8 +253,13 @@ def validate(dataloader: torch.utils.data.DataLoader,
             target = target.squeeze()
 
             # Compute the forward pass through the model
-            output = model.forward(data).squeeze()
-            
+            if config['model']['class'] == 'DefaultAutoencoder':
+                 output = model.forward(target).squeeze()
+
+            else:
+                output = model.forward(data).squeeze()
+
+
             # Compute the loss for the batch
             validation_loss += loss_func(output, target).item()
     
@@ -335,8 +346,13 @@ def predict(dataloader: torch.utils.data.DataLoader,
             data, target = data.to(args.device), target.to(args.device)
             target = target.squeeze()
 
+
             # Compute the forward pass through the model
-            output = model.forward(data).squeeze()
+            if config['model']['class'] == 'DefaultAutoencoder':
+                 output = model.forward(target).squeeze()
+
+            else:
+                output = model.forward(data).squeeze()
 
             prediction[start:end, :] = output
             label[start:end, :] = target
@@ -594,39 +610,15 @@ if __name__ == '__main__':
 
     k = np.linspace(0.01, 1., 200)
 
-    plt.plot(k, val_label[0,:])
-    plt.plot(k, val_prediction[0,:])
-    plt.show()
+    mse_fig = plot.plot_mse_k(val_label.numpy(), val_prediction.numpy(), k)
 
-    val_prediction = val_prediction.numpy()
-    val_label = val_label.numpy()
+    ratio_fig = plot.plot_ratio(val_label.numpy(), val_prediction.numpy(), k)
 
-    mse_k = mse(val_label, val_prediction, multioutput='raw_values')
+    if args.tensorboard:
 
-    plt.plot(mse_k)
-    plt.show()
+        args.logger.add_figure(tag = 'mse validation', figure = mse_fig)
 
-    print(f'Averaged mse : {np.mean(mse_k)}')
-
-    #for model in range(val_label.shape[0]):
-    #    plt.plot(k,val_prediction[model,:]/val_label[model,:], alpha = 0.1)
-
-    plt.fill_between(
-                    k,
-                    np.mean(val_prediction/val_label, axis = 0)-np.std(val_prediction/val_label, axis = 0),
-                    np.mean(val_prediction/val_label, axis = 0) +     np.std(val_prediction/val_label, axis = 0),
-                    alpha=0.2, color = 'blue'
-                    )
-    plt.plot(k, np.mean(val_prediction/val_label, axis = 0), color = 'blue', label = 'Mean prediction')
-
-    plt.ylim(0.9,1.1)
-    plt.axhline(y = 1.01, linestyle = 'dashed', color = 'gray')
-    plt.axhline(y = 1., color = 'gray')
-    plt.axhline(y = 0.99, linestyle = 'dashed', color = 'gray')
-    plt.legend(bbox_to_anchor = (1,1))
-    plt.ylabel('emulator/simulation')
-    plt.xlabel('k')
-    plt.show()
+        args.logger.add_figure(tag = 'ratio validation', figure = ratio_fig)
 
     # -------------------------------------------------------------------------
     # Postliminaries
