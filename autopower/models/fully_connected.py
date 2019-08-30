@@ -65,6 +65,7 @@ class DefaultFullyConnectedModel(nn.Module):
 
         x = self.output_layer.forward(x)
 
+        #return torch.relu(x)
         return x
 
 

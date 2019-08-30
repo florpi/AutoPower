@@ -22,6 +22,9 @@ from autopower.utils.config import load_config
 from autopower.utils.importing import get_class_by_name
 from autopower.utils.training import AverageMeter, get_log_dir, update_lr
 
+from sklearn.metrics import mean_squared_error as mse
+
+import matplotlib.pyplot as plt
 
 # -----------------------------------------------------------------------------
 # FUNCTION DEFINITIONS
@@ -47,7 +50,7 @@ def get_arguments() -> argparse.Namespace:
                         help='Size of the mini-batches during training. '
                              'Default: 64.')
     parser.add_argument('--epochs',
-                        default=64,
+                        default=100,
                         type=int,
                         metavar='N',
                         help='Total number of training epochs. Default: 64.')
@@ -281,6 +284,66 @@ def validate(dataloader: torch.utils.data.DataLoader,
     # Return the validation loss
     return validation_loss
 
+def predict(dataloader: torch.utils.data.DataLoader,
+             model: torch.nn.Module,
+             num_outputs: int,
+             args: argparse.Namespace) -> float:
+    """
+
+    Args:
+        dataloader: The dataloader containing the validation data.
+        model: Instance of the model that is being trained.
+        args: Namespace object containing some global variable (e.g.,
+            command line arguments, such as the batch size).
+
+    Returns:
+        The network's prediction
+    """
+    
+    # -------------------------------------------------------------------------
+    # Preliminaries
+    # -------------------------------------------------------------------------
+    
+    # Activate model evaluation mode
+    model.eval()
+    
+    # -------------------------------------------------------------------------
+    # Process the validation dataset in mini-batches
+    # -------------------------------------------------------------------------
+
+    num_samples = len(dataloader.dataset)
+    num_batches = len(dataloader)
+    batch_size = dataloader.batch_size
+
+    prediction = torch.zeros(num_samples, num_outputs)
+    label = torch.zeros(num_samples, num_outputs)
+    
+    # At test time, we do not need to compute gradients
+    with torch.no_grad():
+        
+        # Loop in mini batches over the validation dataset
+        # TODO: Check order here
+        for i, (target, data) in enumerate(dataloader):
+
+            start = i * batch_size
+            end = start + batch_size
+
+            if i == num_batches - 1:
+                end = num_samples 
+
+            # Fetch batch data and move to device
+            data, target = data.to(args.device), target.to(args.device)
+            target = target.squeeze()
+
+            # Compute the forward pass through the model
+            output = model.forward(data).squeeze()
+
+            prediction[start:end, :] = output
+            label[start:end, :] = target
+            
+    return prediction , label
+
+
 
 # -----------------------------------------------------------------------------
 # MAIN CODE
@@ -410,11 +473,11 @@ if __name__ == '__main__':
     hdf_file_path = '../data/powerspectra_10k.hdf'
     training_dataset = DefaultDataset(mode='training',
                                       hdf_file_path=hdf_file_path,
-                                      train_size=1000,
+                                      train_size=9000,
                                       validation_size=1000)
     validation_dataset = DefaultDataset(mode='validation',
                                         hdf_file_path=hdf_file_path,
-                                        train_size=1000,
+                                        train_size=9000,
                                         validation_size=1000)
 
     # Compute size of training / validation set and number of training batches
@@ -520,8 +583,50 @@ if __name__ == '__main__':
         print(f'Total Epoch Time: {time.time() - epoch_start:.3f}s\n')
         
         # ---------------------------------------------------------------------
+   
 
     print(80 * '-' + '\n\n' + 'Training complete!')
+
+    val_prediction, val_label = predict(dataloader = validation_dataloader,
+                            model = model,
+                            num_outputs = 200,
+                            args = args)
+
+    k = np.linspace(0.01, 1., 200)
+
+    plt.plot(k, val_label[0,:])
+    plt.plot(k, val_prediction[0,:])
+    plt.show()
+
+    val_prediction = val_prediction.numpy()
+    val_label = val_label.numpy()
+
+    mse_k = mse(val_label, val_prediction, multioutput='raw_values')
+
+    plt.plot(mse_k)
+    plt.show()
+
+    print(f'Averaged mse : {np.mean(mse_k)}')
+
+    #for model in range(val_label.shape[0]):
+    #    plt.plot(k,val_prediction[model,:]/val_label[model,:], alpha = 0.1)
+
+    plt.fill_between(
+                    k,
+                    np.mean(val_prediction/val_label, axis = 0)-np.std(val_prediction/val_label, axis = 0),
+                    np.mean(val_prediction/val_label, axis = 0) +     np.std(val_prediction/val_label, axis = 0),
+                    alpha=0.2, color = 'blue'
+                    )
+    plt.plot(k, np.mean(val_prediction/val_label, axis = 0), color = 'blue', label = 'Mean prediction')
+
+    plt.ylim(0.9,1.1)
+    plt.axhline(y = 1.01, linestyle = 'dashed', color = 'gray')
+    plt.axhline(y = 1., color = 'gray')
+    plt.axhline(y = 0.99, linestyle = 'dashed', color = 'gray')
+    plt.legend(bbox_to_anchor = (1,1))
+    plt.ylabel('emulator/simulation')
+    plt.xlabel('k')
+    plt.show()
 
     # -------------------------------------------------------------------------
     # Postliminaries
