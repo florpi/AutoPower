@@ -56,6 +56,13 @@ def get_arguments() -> argparse.Namespace:
                         type=int,
                         metavar='N',
                         help='Total number of training epochs. Default: 100.')
+    parser.add_argument('--train-size',
+                        default=9000,
+                        type=int,
+                        metavar='N',
+                        help='Number of samples to use for training'
+                             'Default: 900.')
+ 
     parser.add_argument('--experiment',
                         default='default',
                         type=str,
@@ -143,6 +150,7 @@ def train(dataloader: torch.utils.data.DataLoader,
         # Fetch data and move to device
         data, target = data.to(args.device), target.to(args.device)
         target = target.squeeze()
+
 
         # Clear gradients
         optimizer.zero_grad()
@@ -489,11 +497,11 @@ if __name__ == '__main__':
     hdf_file_path = '../data/powerspectra_10k.hdf'
     training_dataset = DefaultDataset(mode='training',
                                       hdf_file_path=hdf_file_path,
-                                      train_size=9000,
+                                      train_size=args.train_size,
                                       validation_size=1000)
     validation_dataset = DefaultDataset(mode='validation',
                                         hdf_file_path=hdf_file_path,
-                                        train_size=9000,
+                                        train_size=args.train_size,
                                         validation_size=1000)
 
     # Compute size of training / validation set and number of training batches
@@ -627,3 +635,17 @@ if __name__ == '__main__':
     print('')
     print(f'This took {time.time() - script_start:.1f} seconds!')
     print('')
+
+    ratio = val_prediction.numpy()/val_label.numpy()
+    plt.errorbar(k, np.mean(ratio, axis = 0), yerr = np.std(ratio, axis = 0))
+
+    plt.ylim(0.9, 1.1)
+
+    plt.axhline(y = 1.01, linestyle = 'dashed', color = 'gray')
+    plt.axhline(y = 1., color = 'gray')
+    plt.axhline(y = 0.99, linestyle = 'dashed', color = 'gray')
+    plt.ylabel('emulator/simulation')
+    plt.xlabel('k')
+    plt.show()
+
+
